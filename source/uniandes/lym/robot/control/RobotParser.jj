@@ -1,0 +1,351 @@
+/*
+Basic Robot Grammar
+Author: Pedro Vallejo - /Felipe Guzmán - 201813791
+ **/
+
+options 
+{
+	LOOKAHEAD=1; 
+	IGNORE_CASE=true;
+	STATIC = false;
+	
+}
+   
+   
+PARSER_BEGIN(RobotParser)
+
+package uniandes.lym.robot.control;
+
+import uniandes.lym.robot.kernel.*;
+import java.io.*;
+import java.util.*;
+
+
+@SuppressWarnings("serial")
+public class RobotParser 
+{
+
+
+	private RobotWorldDec robotw;
+	
+	
+	void setWorld(RobotWorld w) {
+	robotw = (RobotWorldDec) w;
+	}
+
+    void delay(int d) {
+				try {
+	    			        Thread.sleep(d);
+	    			    } catch (InterruptedException e) {
+	    			        System.err.format("IOException: %s%n", e);
+	    			    }
+
+    }  
+	
+}
+PARSER_END(RobotParser)
+
+SKIP:
+{
+	" "
+	|	"\r"
+	|	"\t"
+	|	"\n"
+}
+
+TOKEN: /* Structure */
+{
+
+		<ROBOT_R:  "ROBOT_R">
+		| <VARS: "VARS">
+		| < BEGIN: "BEGIN" >
+		| < END: "END" >	
+}
+
+TOKEN: /* Indicators */
+{
+
+		< #DIGIT: "0" | "1" | "2"| "3" | "4" | "5" |  "6" | "7" | "8" |"9" >
+		| < NUMBER: ( <DIGIT> )+ >
+		| < #MAY: ["A"-"Z"] >
+		| < #MIN: ["a"-"z"] >
+		| < DIRECTION: ("left"|"right"|"front"|"back"|"around") >
+		| < ORIENTATION: ("north"|"south"|"east"|"west") >
+		| < X: ("chips"|"balloons") >
+}
+
+TOKEN: /* Instructions */
+{
+
+		<ASSIGN:  "assign">
+		| <TO: "to">
+		| < MOVE: "move" >
+		| < TURN: "turn" >
+		| < FACE: "face" >
+		| < PUT: "put" >
+		| < OF: "of" >
+		| < PICK: "pick" >
+		| < TOTHE: "toThe" >
+		| < INDIR: "inDir" >
+		| < NAME: (< MAY >|< MIN >)(< MAY >|< MIN >| < DIGIT >)* >
+}
+ 
+
+
+
+ 
+
+	boolean instructions(StringBuffer system) :
+	{	
+				String output=new String();
+		
+	}
+	{
+		(< ROBOT_R > (variableBlock())?instructionBlock())
+		{  return true;}
+	}
+
+	void variableBlock():
+	{}
+	{
+	    < VARS >((variable())?(","variable())*)
+	}
+
+	void variable():
+	{Token token;}
+	{
+	  (token =< NAME >) { String s = token.image; robotw.darHM().put(s, null);}
+	}
+
+	void instructionBlock():
+	{}
+	{
+	    < BEGIN >((instruction())?(";"instruction())*)<END >
+	}
+
+	void instruction():
+	{}
+	{
+	    (turn()
+	  | face()
+	  | assignTo()
+	  | move()
+	  | putOf()
+	  | pickOf())	      
+	}
+
+	void pickOf():
+	{Token token1; Integer integ;}
+	{
+	      < PICK >
+	      (
+	        (
+	          (token1 = < NUMBER >) {integ = Integer.parseInt(token1.image); } 
+	        | (token1 = < NAME >) {integ = robotw.darHM().get(token1.image); }
+	      	)<OF >
+	      	(token1 = <X >)
+	      	  {
+	      	    
+	      	    if (token1.image.equalsIgnoreCase("balloons"))
+	      	    {
+	      	      robotw.grabBalloons(integ);
+	      	    }
+
+	      	    else if (token1.image.equalsIgnoreCase("chips"))
+	      	    {
+	      	      robotw.pickChips(integ);
+	      	    }
+	      	  }
+	      )
+	}
+	
+	void putOf():
+	{Token token1; Integer integ;}
+	{
+	      < PUT >
+	      (
+	        (
+	          (token1 = < NUMBER >) {integ = Integer.parseInt(token1.image); } 
+	        | (token1 = < NAME >) {integ = robotw.darHM().get(token1.image); }
+	      	)<OF >
+	      	(token1 = <X >)	      	  {
+	      	    
+	      	    if (token1.image.equalsIgnoreCase("balloons"))
+	      	    {
+	      	      robotw.putBalloons(integ);
+	      	    }
+
+	      	    else if (token1.image.equalsIgnoreCase("chips"))
+	      	    {
+	      	      robotw.putChips(integ);
+	      	    }
+	      	  }
+	      )
+	}
+
+	void assignTo():
+	{Token token1; Token token2;}
+	{
+	    (
+	      <ASSIGN> (token1=< NUMBER >) < TO > (token2 =< NAME >)
+	      {
+	        String s1 = token1.image;
+	        String s2 = token2.image;
+	        Integer v = Integer.parseInt(s1);
+	        robotw.darHM().put(s2, v);
+	      }
+	    ) 
+	}
+
+	void turn():
+	{Token token;}
+	{
+	      <TURN> (token = < DIRECTION >)
+	      {
+	        String s = token.image;
+	        if (s.equalsIgnoreCase("left")) {robotw.turnRight();robotw.turnRight();robotw.turnRight();}
+	        else if (s.equalsIgnoreCase("right")) {robotw.turnRight();}
+	        else if (s.equalsIgnoreCase("around")) {robotw.turnRight();robotw.turnRight();}
+	      }
+	}
+
+	void face():
+	{Token token;}
+	{
+	    (	      < FACE >(token = < ORIENTATION >)
+	      { 
+			String s = token.image;
+	        if (s.equalsIgnoreCase("north"))
+	        {
+	          if (robotw.getOrientation() == robotw.WEST){ robotw.turnRight();}
+	          else if (robotw.getOrientation() == robotw.SOUTH){ robotw.turnRight();robotw.turnRight();}
+	          else if (robotw.getOrientation() == robotw.EAST){ robotw.turnRight();robotw.turnRight();robotw.turnRight();}  
+	        }
+	      else if (s.equalsIgnoreCase("south"))
+	      {
+	          if (robotw.getOrientation() == robotw.WEST){ robotw.turnRight();robotw.turnRight();robotw.turnRight();}
+	          else if (robotw.getOrientation() == robotw.NORTH){ robotw.turnRight();robotw.turnRight();}
+	          else if (robotw.getOrientation() == robotw.EAST){ robotw.turnRight();}  
+	      } 
+	      else if (s.equalsIgnoreCase("east"))
+	      {
+	          if (robotw.getOrientation() == robotw.WEST){ robotw.turnRight();robotw.turnRight();}
+	          else if (robotw.getOrientation() == robotw.NORTH){ robotw.turnRight();}
+	          else if (robotw.getOrientation() == robotw.SOUTH){ robotw.turnRight();robotw.turnRight();robotw.turnRight();}  
+	      }
+	      else if (s.equalsIgnoreCase("west"))
+	      {
+	          if (robotw.getOrientation() == robotw.EAST){ robotw.turnRight();robotw.turnRight();}
+	          else if (robotw.getOrientation() == robotw.NORTH){ robotw.turnRight();robotw.turnRight();robotw.turnRight();}
+	          else if (robotw.getOrientation() == robotw.SOUTH){ robotw.turnRight();}  
+	      }
+	    }
+	    )
+	      
+	}
+
+	void move():
+	{Token token; Token token2; Integer integ;}
+	{
+	      <MOVE>
+	      (
+	        (	          (token = < NUMBER >) {integ = Integer.parseInt(token.image); } 
+	        | (token2 = < NAME >) {integ = robotw.darHM().get(token2.image); }	      	)
+	      	(
+	      	  toThe(integ)
+	      	| inDir(integ)
+	      	| {robotw.moveForward(integ);} 	      	)
+	      )
+	}
+
+	void inDir(Integer n):
+	{Token token;}
+	{
+	  < INDIR > (token = < ORIENTATION >)
+	  {
+	    String s = token.image;
+	    int i = 0;
+
+	    if (s.equalsIgnoreCase("north"))
+	    {
+	      while (i < n)
+	      {
+	        robotw.moveNorth();
+	        i ++;
+	      }
+	    }
+	    
+	    else if (s.equalsIgnoreCase("south"))
+	    {
+	      while (i < n)
+	      {
+	        robotw.moveSouth();
+	        i ++;
+	      }
+	    }
+
+	    else if (s.equalsIgnoreCase("east"))
+	    {
+	      while (i < n)
+	      {
+	        robotw.moveEast();
+	        i ++;
+	      }
+	    }
+
+	    else if (s.equalsIgnoreCase("west"))
+	    {
+	      while (i < n)
+	      {
+	        robotw.moveWest();
+	        i ++;
+	      }
+	    }
+	    }
+	  }
+		
+	void toThe(Integer n):
+	{Token token;}
+	{
+	  < TOTHE > (token = < DIRECTION >)
+	  {
+	    String s = token.image;
+	    int i = 0;
+
+	    if (s.equalsIgnoreCase("right"))
+	    {
+	      while (i < n)
+	      {
+	          if (robotw.getOrientation() == robotw.NORTH){ robotw.moveEast();}
+	          else if (robotw.getOrientation() == robotw.SOUTH){ robotw.moveWest();}
+	          else if (robotw.getOrientation() == robotw.EAST){ robotw.moveSouth();}
+	          else { robotw.moveNorth();}
+	          i ++;
+	      }
+	    }
+	    
+	    else if (s.equalsIgnoreCase("left"))
+	    {
+	      while (i < n)
+	      {
+	          if (robotw.getOrientation() == robotw.NORTH){ robotw.moveWest();}
+	          else if (robotw.getOrientation() == robotw.SOUTH){ robotw.moveEast();}
+	          else if (robotw.getOrientation() == robotw.EAST){ robotw.moveNorth();}
+	          else { robotw.moveSouth();}
+	          i ++;
+	      }
+	    }
+
+	    else if (s.equalsIgnoreCase("back"))
+	    {
+	      while (i < n)
+	      {
+	          if (robotw.getOrientation() == robotw.NORTH){ robotw.moveSouth();}
+	          else if (robotw.getOrientation() == robotw.SOUTH){ robotw.moveNorth();}
+	          else if (robotw.getOrientation() == robotw.EAST){ robotw.moveWest();}
+	          else { robotw.moveEast();}
+	          i ++;
+	      }
+	    }
+	  }
+	}
