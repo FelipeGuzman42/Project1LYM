@@ -89,11 +89,18 @@ TOKEN: /* Instructions */
 		| < INDIR: "inDir" >
 		| < NAME: (< MAY >|< MIN >)(< MAY >|< MIN >| < DIGIT >)* >
 }
- 
 
-
-
- 
+TOKEN: /* CONDITIONALS */{
+		< IF: "if" >
+		| < THEN: "then" >
+		| < ELSE: "else" >
+		| < WHILE: "while" >
+		| < DO: "do" >
+		| < REPEAT: "repeat" >
+		| < TIMES: "times" >
+		| < CONDITION: "facing" | "canPut" | "canPick" | "canMove">
+		| < NOT: "not" >
+}
 
 	boolean instructions(StringBuffer system) :
 	{	
@@ -348,4 +355,6 @@ TOKEN: /* Instructions */
 	      }
 	    }
 	  }
+
+	  
 	}
