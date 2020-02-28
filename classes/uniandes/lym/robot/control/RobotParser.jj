@@ -108,7 +108,10 @@ TOKEN: /* CONDITIONALS */{
 		
 	}
 	{
-		(< ROBOT_R > (variableBlock())?instructionBlock())
+		(< ROBOT_R > (variableBlock())?
+		< BEGIN >
+		instructionBlock()
+		< END >)
 		{  return true;}
 	}
 
@@ -127,8 +130,32 @@ TOKEN: /* CONDITIONALS */{
 	void instructionBlock():
 	{}
 	{
-	    < BEGIN >((instruction())?(";"instruction())*)<END >
+	    ((instruction()";")?(instruction()";")*)
 	}
+
+	void control(): {} {
+		(conditional()
+	  | loop()
+	  | repeat())
+	}
+	void conditional(){}{
+	  <IF> condition() <THEN> <ELSE>   
+	}
+	void loop(){}{
+	  <WHILE> condition() <DO> instructionBlock()
+	}
+	void repeat(){Token token1; Integer integ;}{
+	  <REPEAT> instructionBlock() <TIMES> (
+		(token1 = < NUMBER >) {integ = Integer.parseInt(token1.image); } 
+	  | (token1 = < NAME >) {integ = robotw.darHM().get(token1.image); }
+	  )
+	}
+
+	boolean condition() {
+	   } {
+	     (	       <CONDITION>
+	     | <NOT> <CONDITION>)
+	  }
 
 	void instruction():
 	{}
@@ -355,6 +382,4 @@ TOKEN: /* CONDITIONALS */{
 	      }
 	    }
 	  }
-
-	  
 	}
