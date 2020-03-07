@@ -27,7 +27,8 @@ public class RobotParser
 	private ArrayList<String> instruc = new ArrayList<>();
 
 	private RobotWorldDec robotw;
-	
+	private InstructionReader readThis;
+	private boolean condit = false;
 	
 	void setWorld(RobotWorld w) {
 	robotw = (RobotWorldDec) w;
@@ -130,7 +131,7 @@ TOKEN: /* CONDITIONALS */{
 	void instructionBlock():
 	{}
 	{
-	    ((instruction()";")?(instruction()";")*)
+	    ((((instruction()";")?(instruction()";")*)) | (control())?)
 	}
 
 	void control(): {} {
@@ -139,26 +140,24 @@ TOKEN: /* CONDITIONALS */{
 	  | repeat())
 	}
 	void conditional(){}{
-	  <IF> condition() <THEN> <ELSE>   
+	  <IF> condition() <THEN> readInstruction() readThis.reader(instruc, condit) <ELSE> readInstruction() readThis.reader(instruc, !condit)
 	}
 	void loop(){}{
-	  <WHILE> condition() <DO> instructionBlock()
+	  <WHILE> condition() <DO> readInstruction() readThis.reader(instruc, condit)
 	}
 	void repeat(){Token token1; Integer integ;}{
-	  <REPEAT> instructionBlock() <TIMES> (
+	  <REPEAT> readInstruction() readThis.reader(instruc, condit) <TIMES> (
 		(token1 = < NUMBER >) {integ = Integer.parseInt(token1.image); } 
 	  | (token1 = < NAME >) {integ = robotw.darHM().get(token1.image); }
-	  ) { for(int i = 0; i<integer; i++) {
-			instructionBlock();
-	    }}
+	  )
 	}
 
-	boolean condition() {
+	boolean condition() {Token token;
 	   } {
-	     (	       <CONDITION>
-	     | <NOT> <CONDITION>)
+	     (	       (token = <CONDITION>) {instruc.add(token.image); condit = true;}
+	     | <NOT> (token = <CONDITION>) {instruc.add(token.image); condit = false;})
 	  }
-	void readInstruction(): {Token token} {
+	void readInstruction(): {Token token;} {
 		((token = < TURN >) {instruc.add(token.image);} (token = <DIRECTION>) {instruc.add(token.image);}
 	  | (token = <FACE>) {instruc.add(token.image);} (token = <ORIENTATION>) {instruc.add(token.image);}
 	  | (token = <ASSIGN>){instruc.add(token.image);}(token = <NUMBER>){instruc.add(token.image);}(token = <TO>){instruc.add(token.image);}(token = <NAME>){instruc.add(token.image);}
@@ -174,7 +173,7 @@ TOKEN: /* CONDITIONALS */{
 	  | assignTo()
 	  | move()
 	  | putOf()
-	  | pickOf())	      
+	  | pickOf())
 	}
 
 	void pickOf():
